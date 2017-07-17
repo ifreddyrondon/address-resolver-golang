@@ -2,12 +2,12 @@
 package main
 
 import (
-	"net/http"
-	"log"
-	"github.com/ifreddyrondon/address-resolver/addresses"
+	"github.com/ifreddyrondon/address-resolver/app"
+	"os"
 )
 
 func main() {
-	http.HandleFunc("/address/", addresses.Router)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	application := app.App{}
+	application.Initialize(os.Getenv("DATABASE_URL"))
+	application.Run(":8080")
 }
