@@ -101,3 +101,31 @@ func TestGetAddress(t *testing.T) {
 	checkResponseCode(t, http.StatusOK, response.Code)
 }
 
+func TestUpdateAddress(t *testing.T) {
+	database.ClearTable()
+	addAddress(1)
+
+	req, _ := http.NewRequest("GET", "/address/1", nil)
+	response := executeRequest(req)
+	var originalAddress map[string]interface{}
+	json.Unmarshal(response.Body.Bytes(), &originalAddress)
+
+	payload := []byte(`{"address":"test address - updated name"}`)
+
+	req, _ = http.NewRequest("PUT", "/address/1", bytes.NewBuffer(payload))
+	response = executeRequest(req)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+
+	var m map[string]interface{}
+	json.Unmarshal(response.Body.Bytes(), &m)
+
+	if m["id"] != originalAddress["id"] {
+		t.Errorf("Expected the id to remain the same (%v). Got %v", originalAddress["id"], m["id"])
+	}
+
+	if m["address"] == originalAddress["address"] {
+		t.Errorf("Expected the address to change from '%v' to '%v'. Got '%v'", originalAddress["address"], m["address"], m["address"])
+	}
+}
+
