@@ -1,11 +1,14 @@
 package addresses
 
 import (
-	"net/http"
-	"fmt"
-	"path"
+	"database/sql"
 	"encoding/json"
+	"fmt"
+	"github.com/ifreddyrondon/address-resolver/database"
 	"github.com/ifreddyrondon/address-resolver/gmap"
+	"net/http"
+	"path"
+	"strconv"
 )
 
 func Router(w http.ResponseWriter, r *http.Request) {
@@ -29,46 +32,75 @@ func Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAddressList(w http.ResponseWriter, r *http.Request) {
-	list := Addresses{
-		{Address: "Apoquindo 4800", Lat: 1.1, Lng: 2.4},
-		{Address: "Jorge Matte 1481", Lat: 4.3, Lng: 7.5},
-	}
-	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(list)
+	count := 10
+	start := 0
+	list, err := GetAddresses(database.GetDB(), start, count)
 	if err != nil {
-		panic(err)
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
 	}
+
+	respondWithJSON(w, http.StatusOK, list)
 }
 
 func GetAddress(w http.ResponseWriter, r *http.Request) {
-	// addressID := path.Base(r.URL.Path)
 	var addressID string
 	fmt.Sscanf(r.URL.Path, "/address/%s", &addressID)
-	fmt.Fprintf(w, "GET address: %s\n", addressID)
+	id, err := strconv.Atoi(addressID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid address ID")
+		return
+	}
+
+	address := Address{ID: id}
+	if err := address.getAddress(database.GetDB()); err != nil {
+		switch err {
+		case sql.ErrNoRows:
+			respondWithError(w, http.StatusNotFound, "Address not found")
+		default:
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, address)
 }
 
 func CreateAddress(w http.ResponseWriter, r *http.Request) {
 	var address Address
-
-	if err := json.NewDecoder(r.Body).Decode(&address); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, err.Error())
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&address); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	defer r.Body.Close()
 
-	coodinate, err := gmap.GetLatLngFromAddress(address.Address)
+	coordinate, err := gmap.GetLatLngFromAddress(address.Address)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, err.Error())
+		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	address.Lat = coodinate.Lat
-	address.Lng = coodinate.Lng
+	address.Lat = coordinate.Lat
+	address.Lng = coordinate.Lng
+
+	if err := address.createAddress(database.GetDB()); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusCreated, address)
+}
+
+
+func respondWithError(w http.ResponseWriter, code int, message string) {
+	respondWithJSON(w, code, map[string]string{"error": message})
+}
+
+func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+	response, _ := json.Marshal(payload)
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(address); err != nil {
-		panic(err)
-	}
+	w.WriteHeader(code)
+	w.Write(response)
 }
