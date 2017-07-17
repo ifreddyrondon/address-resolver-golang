@@ -129,3 +129,20 @@ func TestUpdateAddress(t *testing.T) {
 	}
 }
 
+func TestDeleteAddress(t *testing.T) {
+	database.ClearTable()
+	addAddress(1)
+
+	req, _ := http.NewRequest("GET", "/address/1", nil)
+	response := executeRequest(req)
+	checkResponseCode(t, http.StatusOK, response.Code)
+
+	req, _ = http.NewRequest("DELETE", "/address/1", nil)
+	response = executeRequest(req)
+
+	checkResponseCode(t, http.StatusNoContent, response.Code)
+
+	req, _ = http.NewRequest("GET", "/address/1", nil)
+	response = executeRequest(req)
+	checkResponseCode(t, http.StatusNotFound, response.Code)
+}

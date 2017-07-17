@@ -21,6 +21,12 @@ func (addrs *Address) updateAddress(db *sql.DB) error {
 	return err
 }
 
+func (addrs *Address) deleteAddress(db *sql.DB) error {
+	_, err := db.Exec("DELETE FROM addresses WHERE id=$1", addrs.ID)
+
+	return err
+}
+
 func (addrs *Address) createAddress(db *sql.DB) error {
 	err := db.QueryRow(
 		"INSERT INTO addresses(address, lat, lng) VALUES($1, $2, $3) RETURNING id",

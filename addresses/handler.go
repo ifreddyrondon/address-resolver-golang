@@ -19,6 +19,8 @@ func Router(w http.ResponseWriter, r *http.Request) {
 		CreateAddress(w, r)
 	case "PUT":
 		UpdateProduct(w, r)
+	case "DELETE":
+		DeleteProduct(w, r)
 	default:
 		fmt.Fprintf(w, "Method %s not supported\n", r.Method)
 	}
@@ -125,6 +127,28 @@ func UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, address)
 }
 
+func DeleteProduct(w http.ResponseWriter, r *http.Request) {
+	baseUrl := path.Base(r.URL.Path)
+	if baseUrl == "address" {
+		fmt.Fprintf(w, "Method %s not supported\n", r.Method)
+	}
+
+	var addressID string
+	fmt.Sscanf(r.URL.Path, "/address/%s", &addressID)
+	id, err := strconv.Atoi(addressID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid address ID")
+		return
+	}
+
+	address := Address{ID: id}
+	if err := address.deleteAddress(database.GetDB()); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusNoContent, map[string]string{"result": "success"})
+}
 
 func respondWithError(w http.ResponseWriter, code int, message string) {
 	respondWithJSON(w, code, map[string]string{"error": message})
