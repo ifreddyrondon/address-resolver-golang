@@ -1,9 +1,9 @@
 package gmap
 
 import (
-	"net/http"
-	"fmt"
 	"encoding/json"
+	"fmt"
+	"net/http"
 	"net/url"
 )
 
