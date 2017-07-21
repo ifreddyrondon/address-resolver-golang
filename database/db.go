@@ -2,19 +2,21 @@ package database
 
 import (
 	"database/sql"
-	_ "github.com/lib/pq"
 	"log"
+
+	_ "github.com/lib/pq"
 )
 
-const tableCreationQuery = `CREATE TABLE IF NOT EXISTS addresses
-(
-id SERIAL,
-address TEXT NOT NULL,
-lat NUMERIC(10,2) NOT NULL,
-lng NUMERIC(10,2) NOT NULL,
-CONSTRAINT addresses_pkey PRIMARY KEY (id)
+const (
+	tableCreationQuery = `CREATE TABLE IF NOT EXISTS addresses (
+				id SERIAL,
+				address TEXT NOT NULL,
+				lat NUMERIC(10,2) NOT NULL,
+				lng NUMERIC(10,2) NOT NULL,
+				CONSTRAINT addresses_pkey PRIMARY KEY (id))`
+	deleteDataQuery        = "DELETE FROM addresses"
+	restartIdSequenceQuery = "ALTER SEQUENCE addresses_id_seq RESTART WITH 1"
 )
-`
 
 var db *sql.DB
 
@@ -46,6 +48,6 @@ func ensureTableExists() {
 }
 
 func ClearTable() {
-	db.Exec("DELETE FROM addresses")
-	db.Exec("ALTER SEQUENCE addresses_id_seq RESTART WITH 1")
+	db.Exec(deleteDataQuery)
+	db.Exec(restartIdSequenceQuery)
 }
