@@ -1,6 +1,9 @@
 package addresses
 
-import "database/sql"
+import (
+	"database/sql"
+	"log"
+)
 
 type Address struct {
 	ID      int     `json:"id"`
@@ -45,21 +48,22 @@ func GetAddresses(db *sql.DB, start, count int) (Addresses, error) {
 	rows, err := db.Query(
 		"SELECT id, address, lat, lng FROM addresses LIMIT $1 OFFSET $2",
 		count, start)
-
 	if err != nil {
 		return nil, err
 	}
-
 	defer rows.Close()
 
 	list := Addresses{}
-
 	for rows.Next() {
 		var addrs Address
 		if err := rows.Scan(&addrs.ID, &addrs.Address, &addrs.Lat, &addrs.Lng); err != nil {
 			return nil, err
 		}
 		list = append(list, addrs)
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Fatal(err)
 	}
 
 	return list, nil
