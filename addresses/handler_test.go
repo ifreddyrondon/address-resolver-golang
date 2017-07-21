@@ -11,6 +11,7 @@ import (
 
 	"bytes"
 
+	"github.com/ifreddyrondon/address-resolver/addresses"
 	"github.com/ifreddyrondon/address-resolver/app"
 	"github.com/ifreddyrondon/address-resolver/database"
 	"github.com/ifreddyrondon/address-resolver/gognar"
@@ -44,7 +45,7 @@ func addAddress(count int) {
 	}
 
 	for i := 0; i < count; i++ {
-		database.GetDB().Exec("INSERT INTO addresses(address, lat, lng) VALUES($1, $2, $3)", "Address "+strconv.Itoa(i), (i+1.0)*10, (i-1.0)*10)
+		database.GetDB().Exec(addresses.CreateAddressQuery, "Address "+strconv.Itoa(i), (i+1.0)*10, (i-1.0)*10)
 	}
 }
 
