@@ -52,15 +52,15 @@ func GetAddresses(db *sql.DB, start, count int) (Addresses, error) {
 
 	defer rows.Close()
 
-	addresses := Addresses{}
+	list := Addresses{}
 
 	for rows.Next() {
 		var addrs Address
 		if err := rows.Scan(&addrs.ID, &addrs.Address, &addrs.Lat, &addrs.Lng); err != nil {
 			return nil, err
 		}
-		addresses = append(addresses, addrs)
+		list = append(list, addrs)
 	}
 
-	return addresses, nil
+	return list, nil
 }

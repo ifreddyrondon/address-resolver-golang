@@ -3,24 +3,22 @@ package app
 import (
 	"github.com/ifreddyrondon/address-resolver/addresses"
 	"github.com/ifreddyrondon/address-resolver/database"
-	"log"
-	"net/http"
+	"github.com/ifreddyrondon/address-resolver/gognar"
 )
 
-type App struct {
-	Router *http.ServeMux
-}
+var app gognar.GogApp
 
-func (app *App) Initialize(dbConnectionUrl string) {
+func Initialize(dbConnectionUrl string) *gognar.GogApp {
+	app.Initialize()
 	database.CreateConnection(dbConnectionUrl)
-	app.Router = http.NewServeMux()
-	app.initializeRoutes()
+	initializeRoutes()
+	return &app
 }
 
-func (app *App) Run(address string) {
-	log.Fatal(http.ListenAndServe(address, app.Router))
+func Run(address string) {
+	app.Run(address)
 }
 
-func (app *App) initializeRoutes() {
+func initializeRoutes() {
 	app.Router.HandleFunc("/address/", addresses.Router)
 }

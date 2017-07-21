@@ -2,13 +2,16 @@ package addresses
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
-	"github.com/ifreddyrondon/address-resolver/database"
-	"github.com/ifreddyrondon/address-resolver/gmap"
 	"net/http"
 	"path"
 	"strconv"
+
+	"errors"
+
+	"github.com/ifreddyrondon/address-resolver/database"
+	"github.com/ifreddyrondon/address-resolver/gmap"
+	"github.com/ifreddyrondon/address-resolver/gognar"
 )
 
 func Router(w http.ResponseWriter, r *http.Request) {
@@ -40,11 +43,11 @@ func GetAddressList(w http.ResponseWriter, r *http.Request) {
 	start := 0
 	list, err := GetAddresses(database.GetDB(), start, count)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		gognar.InternalServerError(w, err)
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, list)
+	gognar.Send(w, list)
 }
 
 func GetAddress(w http.ResponseWriter, r *http.Request) {
@@ -52,7 +55,7 @@ func GetAddress(w http.ResponseWriter, r *http.Request) {
 	fmt.Sscanf(r.URL.Path, "/address/%s", &addressID)
 	id, err := strconv.Atoi(addressID)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid address ID")
+		gognar.BadRequest(w, errors.New("Invalid address ID"))
 		return
 	}
 
@@ -60,28 +63,26 @@ func GetAddress(w http.ResponseWriter, r *http.Request) {
 	if err := address.getAddress(database.GetDB()); err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			respondWithError(w, http.StatusNotFound, "Address not found")
+			gognar.NotFound(w, errors.New("Address not found"))
 		default:
-			respondWithError(w, http.StatusInternalServerError, err.Error())
+			gognar.InternalServerError(w, err)
 		}
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, address)
+	gognar.Send(w, address)
 }
 
 func CreateAddress(w http.ResponseWriter, r *http.Request) {
 	var address Address
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&address); err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+	if err := gognar.ReadJSON(r.Body, &address); err != nil {
+		gognar.BadRequest(w, errors.New("Invalid resquest payload"))
 		return
 	}
-	defer r.Body.Close()
 
 	coordinate, err := gmap.GetLatLngFromAddress(address.Address)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		gognar.InternalServerError(w, err)
 		return
 	}
 
@@ -89,11 +90,11 @@ func CreateAddress(w http.ResponseWriter, r *http.Request) {
 	address.Lng = coordinate.Lng
 
 	if err := address.createAddress(database.GetDB()); err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		gognar.InternalServerError(w, err)
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, address)
+	gognar.Created(w, address)
 }
 
 func UpdateProduct(w http.ResponseWriter, r *http.Request) {
@@ -106,25 +107,23 @@ func UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	fmt.Sscanf(r.URL.Path, "/address/%s", &addressID)
 	id, err := strconv.Atoi(addressID)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid address ID")
+		gognar.BadRequest(w, errors.New("Invalid address ID"))
 		return
 	}
 
 	var address Address
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&address); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid resquest payload")
+	if err := gognar.ReadJSON(r.Body, &address); err != nil {
+		gognar.BadRequest(w, errors.New("Invalid resquest payload"))
 		return
 	}
-	defer r.Body.Close()
 	address.ID = id
 
 	if err := address.updateAddress(database.GetDB()); err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		gognar.InternalServerError(w, err)
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, address)
+	gognar.Send(w, address)
 }
 
 func DeleteProduct(w http.ResponseWriter, r *http.Request) {
@@ -137,27 +136,15 @@ func DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	fmt.Sscanf(r.URL.Path, "/address/%s", &addressID)
 	id, err := strconv.Atoi(addressID)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid address ID")
+		gognar.BadRequest(w, errors.New("Invalid address ID"))
 		return
 	}
 
 	address := Address{ID: id}
 	if err := address.deleteAddress(database.GetDB()); err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		gognar.InternalServerError(w, err)
 		return
 	}
 
-	respondWithJSON(w, http.StatusNoContent, map[string]string{"result": "success"})
-}
-
-func respondWithError(w http.ResponseWriter, code int, message string) {
-	respondWithJSON(w, code, map[string]string{"error": message})
-}
-
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-	response, _ := json.Marshal(payload)
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	w.Write(response)
+	gognar.NoContent(w)
 }

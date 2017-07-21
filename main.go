@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	application := app.App{}
-	application.Initialize(os.Getenv("DATABASE_URL"))
-	application.Run(":8080")
+	app.Initialize(os.Getenv("DATABASE_URL"))
+	address := ":8080"
+	app.Run(address)
 }

@@ -1,21 +1,25 @@
-package main
+package addresses_test
 
 import (
-	"bytes"
-	"encoding/json"
-	"github.com/ifreddyrondon/address-resolver/app"
-	"github.com/ifreddyrondon/address-resolver/database"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strconv"
 	"testing"
+
+	"encoding/json"
+
+	"bytes"
+
+	"github.com/ifreddyrondon/address-resolver/app"
+	"github.com/ifreddyrondon/address-resolver/database"
+	"github.com/ifreddyrondon/address-resolver/gognar"
 )
 
-var application app.App
+var application *gognar.GogApp
 
 func TestMain(m *testing.M) {
-	application.Initialize(os.Getenv("DATABASE_URL_TEST"))
+	application = app.Initialize(os.Getenv("DATABASE_URL_TEST"))
 	code := m.Run()
 	database.ClearTable()
 	os.Exit(code)
@@ -27,6 +31,7 @@ func executeRequest(req *http.Request) *httptest.ResponseRecorder {
 
 	return rr
 }
+
 func checkResponseCode(t *testing.T, expected, actual int) {
 	if expected != actual {
 		t.Errorf("Expected response code %d. Got %d\n", expected, actual)
@@ -50,8 +55,11 @@ func TestEmptyTable(t *testing.T) {
 
 	checkResponseCode(t, http.StatusOK, response.Code)
 
-	if body := response.Body.String(); body != "[]" {
-		t.Errorf("Expected an empty array. Got %s", body)
+	var body []interface{}
+	json.Unmarshal(response.Body.Bytes(), &body)
+
+	if len(body) != 0 {
+		t.Errorf("Expected an array with len 0. Got %s", len(body))
 	}
 }
 
@@ -65,8 +73,12 @@ func TestGetNonExistentAddress(t *testing.T) {
 
 	var m map[string]string
 	json.Unmarshal(response.Body.Bytes(), &m)
-	if m["error"] != "Address not found" {
-		t.Errorf("Expected the 'error' key of the response to be set to 'Address not found'. Got '%s'", m["error"])
+	if m["error"] != "not_found" {
+		t.Errorf("Expected the 'error' key of the response to be set to 'not_found'. Got '%s'", m["error"])
+	}
+
+	if m["message"] != "Address not found" {
+		t.Errorf("Expected the 'error' key of the response to be set to 'Address not found'. Got '%s'", m["message"])
 	}
 }
 
