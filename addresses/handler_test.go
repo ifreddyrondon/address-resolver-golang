@@ -74,8 +74,8 @@ func TestGetNonExistentAddress(t *testing.T) {
 
 	var m map[string]string
 	json.Unmarshal(response.Body.Bytes(), &m)
-	if m["error"] != "not_found" {
-		t.Errorf("Expected the 'error' key of the response to be set to 'not_found'. Got '%s'", m["error"])
+	if m["error"] != "Not Found" {
+		t.Errorf("Expected the 'error' key of the response to be set to 'Not Found'. Got '%s'", m["error"])
 	}
 
 	if m["message"] != "Address not found" {

@@ -36,16 +36,16 @@ func NoContent(w http.ResponseWriter) {
 
 // 400 RESPONSES
 func NotFound(w http.ResponseWriter, err error) {
-	Abort(w, http.StatusNotFound, "not_found", err.Error())
+	Abort(w, http.StatusNotFound, http.StatusText(http.StatusNotFound), err.Error())
 }
 
 func BadRequest(w http.ResponseWriter, err error) {
-	Abort(w, http.StatusBadRequest, "bad_request", err.Error())
+	Abort(w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest), err.Error())
 }
 
 // 500 RESPONSES
 func InternalServerError(w http.ResponseWriter, err error) {
-	Abort(w, http.StatusInternalServerError, "internal_server_error", err.Error())
+	Abort(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError), err.Error())
 }
 
 func Abort(w http.ResponseWriter, status int, err string, message string) {
