@@ -25,7 +25,7 @@ func Router(w http.ResponseWriter, r *http.Request) {
 	case "DELETE":
 		DeleteProduct(w, r)
 	default:
-		fmt.Fprintf(w, "Method %s not supported\n", r.Method)
+		gognar.MethodNotAllowed(w, errors.New(fmt.Sprintf("Method %s not supported", r.Method)))
 	}
 }
 
@@ -100,7 +100,8 @@ func CreateAddress(w http.ResponseWriter, r *http.Request) {
 func UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	baseUrl := path.Base(r.URL.Path)
 	if baseUrl == "address" {
-		fmt.Fprintf(w, "Method %s not supported\n", r.Method)
+		gognar.MethodNotAllowed(w, errors.New(fmt.Sprintf("Method %s not supported", r.Method)))
+		return
 	}
 
 	var addressID string
@@ -129,7 +130,8 @@ func UpdateProduct(w http.ResponseWriter, r *http.Request) {
 func DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	baseUrl := path.Base(r.URL.Path)
 	if baseUrl == "address" {
-		fmt.Fprintf(w, "Method %s not supported\n", r.Method)
+		gognar.MethodNotAllowed(w, errors.New(fmt.Sprintf("Method %s not supported", r.Method)))
+		return
 	}
 
 	var addressID string

@@ -159,3 +159,19 @@ func TestDeleteAddress(t *testing.T) {
 	response = executeRequest(req)
 	checkResponseCode(t, http.StatusNotFound, response.Code)
 }
+
+func TestPathMethodNotAllowed(t *testing.T) {
+	req, _ := http.NewRequest("PATH", "/address/1", nil)
+	response := executeRequest(req)
+	checkResponseCode(t, http.StatusMethodNotAllowed, response.Code)
+
+	var m map[string]string
+	json.Unmarshal(response.Body.Bytes(), &m)
+	if m["error"] != "Method Not Allowed" {
+		t.Errorf("Expected the 'error' key of the response to be set to 'Method Not Allowed'. Got '%s'", m["error"])
+	}
+
+	if m["message"] != "Method PATH not supported" {
+		t.Errorf("Expected the 'error' key of the response to be set to 'Method PATH not supported'. Got '%s'", m["message"])
+	}
+}

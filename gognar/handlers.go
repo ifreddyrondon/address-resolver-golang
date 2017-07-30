@@ -43,6 +43,10 @@ func BadRequest(w http.ResponseWriter, err error) {
 	Abort(w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest), err.Error())
 }
 
+func MethodNotAllowed(w http.ResponseWriter, err error) {
+	Abort(w, http.StatusMethodNotAllowed, http.StatusText(http.StatusMethodNotAllowed), err.Error())
+}
+
 // 500 RESPONSES
 func InternalServerError(w http.ResponseWriter, err error) {
 	Abort(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError), err.Error())
