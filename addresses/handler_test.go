@@ -9,6 +9,8 @@ import (
 
 	"encoding/json"
 
+	"fmt"
+
 	"bytes"
 
 	"github.com/ifreddyrondon/address-resolver/addresses"
@@ -33,131 +35,324 @@ func executeRequest(req *http.Request) *httptest.ResponseRecorder {
 	return rr
 }
 
+func addAddress(count int) {
+	for i := 0; i < count; i++ {
+		database.GetDB().Exec(addresses.CreateAddressQuery, "Address "+strconv.Itoa(i), (i+1.0)*10, (i-1.0)*10)
+	}
+}
+
 func checkResponseCode(t *testing.T, expected, actual int) {
 	if expected != actual {
 		t.Errorf("Expected response code %d. Got %d\n", expected, actual)
 	}
 }
 
-func addAddress(count int) {
-	if count < 1 {
-		count = 1
+func checkErrorResponse(t *testing.T, expected, actual map[string]interface{}) {
+	if actual["error"] != expected["error"] {
+		t.Errorf("Expected the Error %v. Got %v", expected["error"], actual["error"])
 	}
 
-	for i := 0; i < count; i++ {
-		database.GetDB().Exec(addresses.CreateAddressQuery, "Address "+strconv.Itoa(i), (i+1.0)*10, (i-1.0)*10)
+	if actual["message"] != expected["message"] {
+		t.Errorf("Expected the Message '%v'. Got %v", expected["message"], actual["message"])
 	}
-}
 
-func TestEmptyTable(t *testing.T) {
-	database.ClearTable()
-	req, _ := http.NewRequest("GET", "/address/", nil)
-	response := executeRequest(req)
-
-	checkResponseCode(t, http.StatusOK, response.Code)
-
-	var body []interface{}
-	json.Unmarshal(response.Body.Bytes(), &body)
-
-	if len(body) != 0 {
-		t.Errorf("Expected an array with len 0. Got %s", len(body))
+	if actual["status"] != expected["status"] {
+		t.Errorf("Expected the Status '%v'. Got %v", expected["status"], actual["status"])
 	}
 }
 
-func TestGetNonExistentAddress(t *testing.T) {
-	database.ClearTable()
-
-	req, _ := http.NewRequest("GET", "/address/1", nil)
-	response := executeRequest(req)
-
-	checkResponseCode(t, http.StatusNotFound, response.Code)
-
-	var m map[string]string
-	json.Unmarshal(response.Body.Bytes(), &m)
-	if m["error"] != "Not Found" {
-		t.Errorf("Expected the 'error' key of the response to be set to 'Not Found'. Got '%s'", m["error"])
+func TestGetAddressList(t *testing.T) {
+	tt := []struct {
+		name           string
+		addressesCount int
+	}{
+		{"empty table", 0},
+		{"list of two addresses", 2},
 	}
 
-	if m["message"] != "Address not found" {
-		t.Errorf("Expected the 'error' key of the response to be set to 'Address not found'. Got '%s'", m["message"])
-	}
-}
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			database.ClearTable()
+			addAddress(tc.addressesCount)
+			req, _ := http.NewRequest("GET", "/address/", nil)
+			response := executeRequest(req)
 
-func TestCreateAddress(t *testing.T) {
-	database.ClearTable()
+			checkResponseCode(t, http.StatusOK, response.Code)
 
-	payload := []byte(`{"address": "ejido, manzano bajo"}`)
+			var body []interface{}
+			json.Unmarshal(response.Body.Bytes(), &body)
 
-	req, _ := http.NewRequest("POST", "/address/", bytes.NewBuffer(payload))
-	response := executeRequest(req)
-
-	checkResponseCode(t, http.StatusCreated, response.Code)
-	var m map[string]interface{}
-	json.Unmarshal(response.Body.Bytes(), &m)
-
-	if m["address"] != "ejido, manzano bajo" {
-		t.Errorf("Expected address to be 'ejido, manzano bajo'. Got '%v'", m["address"])
-	}
-
-	if m["id"] != 1.0 {
-		t.Errorf("Expected address ID to be '1'. Got '%v'", m["id"])
+			if len(body) != tc.addressesCount {
+				t.Errorf("Expected an array with len %d. Got %d", tc.addressesCount, len(body))
+			}
+		})
 	}
 }
 
 func TestGetAddress(t *testing.T) {
-	database.ClearTable()
-	addAddress(1)
+	tt := []struct {
+		name     string
+		value    string
+		status   int
+		response map[string]interface{}
+	}{
+		{
+			name:   "get address",
+			value:  "1",
+			status: http.StatusOK,
+			response: map[string]interface{}{
+				"id":      1.0,
+				"address": "Address 0",
+			},
+		},
+		{
+			name:   "missing address",
+			value:  "2",
+			status: http.StatusNotFound,
+			response: map[string]interface{}{
+				"status":  404.0,
+				"error":   "Not Found",
+				"message": "Address not found",
+			},
+		},
+		{
+			name:   "bad request",
+			value:  "x",
+			status: http.StatusBadRequest,
+			response: map[string]interface{}{
+				"status":  400.0,
+				"error":   "Bad Request",
+				"message": "Invalid address ID",
+			},
+		},
+	}
 
-	req, _ := http.NewRequest("GET", "/address/1", nil)
-	response := executeRequest(req)
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			database.ClearTable()
+			addAddress(1)
 
-	checkResponseCode(t, http.StatusOK, response.Code)
+			req, _ := http.NewRequest("GET", fmt.Sprintf("/address/%s", tc.value), nil)
+			response := executeRequest(req)
+
+			checkResponseCode(t, tc.status, response.Code)
+
+			var m map[string]interface{}
+			json.Unmarshal(response.Body.Bytes(), &m)
+
+			if tc.status != http.StatusOK {
+				checkErrorResponse(t, tc.response, m)
+			}
+
+			if m["id"] != tc.response["id"] {
+				t.Errorf("Expected the id %v. Got %v", tc.response["id"], m["id"])
+			}
+
+			if m["address"] != tc.response["address"] {
+				t.Errorf("Expected the address '%v'. Got %v", tc.response["address"], m["address"])
+			}
+		})
+	}
+}
+
+func TestCreateAddress(t *testing.T) {
+	tt := []struct {
+		name     string
+		payload  []byte
+		status   int
+		response map[string]interface{}
+	}{
+		{
+			name:    "create address",
+			payload: []byte(`{"address": "ejido, manzano bajo"}`),
+			status:  http.StatusCreated,
+			response: map[string]interface{}{
+				"id":      1.0,
+				"address": "ejido, manzano bajo",
+			},
+		},
+		{
+			name:    "bad request",
+			payload: []byte(`{"a": "ejido, manzano bajo"}`),
+			status:  http.StatusBadRequest,
+			response: map[string]interface{}{
+				"status":  400.0,
+				"error":   "Bad Request",
+				"message": "Invalid request payload",
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			database.ClearTable()
+
+			req, _ := http.NewRequest("POST", "/address/", bytes.NewBuffer(tc.payload))
+			response := executeRequest(req)
+
+			checkResponseCode(t, tc.status, response.Code)
+
+			var m map[string]interface{}
+			json.Unmarshal(response.Body.Bytes(), &m)
+
+			if tc.status != http.StatusOK {
+				checkErrorResponse(t, tc.response, m)
+			}
+
+			if m["address"] != tc.response["address"] {
+				t.Errorf("Expected address to be '%v'. Got '%v'", tc.response["address"], m["address"])
+			}
+
+			if m["id"] != tc.response["id"] {
+				t.Errorf("Expected address ID to be '%v'. Got '%v'", tc.response["id"], m["id"])
+			}
+		})
+	}
 }
 
 func TestUpdateAddress(t *testing.T) {
-	database.ClearTable()
-	addAddress(1)
-
-	req, _ := http.NewRequest("GET", "/address/1", nil)
-	response := executeRequest(req)
-	var originalAddress map[string]interface{}
-	json.Unmarshal(response.Body.Bytes(), &originalAddress)
-
-	payload := []byte(`{"address":"test address - updated name"}`)
-
-	req, _ = http.NewRequest("PUT", "/address/1", bytes.NewBuffer(payload))
-	response = executeRequest(req)
-
-	checkResponseCode(t, http.StatusOK, response.Code)
-
-	var m map[string]interface{}
-	json.Unmarshal(response.Body.Bytes(), &m)
-
-	if m["id"] != originalAddress["id"] {
-		t.Errorf("Expected the id to remain the same (%v). Got %v", originalAddress["id"], m["id"])
+	tt := []struct {
+		name      string
+		updateUrl string
+		payload   []byte
+		status    int
+		response  map[string]interface{}
+	}{
+		{
+			name:      "update address",
+			updateUrl: "/address/1",
+			payload:   []byte(`{"address": "ejido, manzano bajo"}`),
+			status:    http.StatusOK,
+			response: map[string]interface{}{
+				"id":      1.0,
+				"address": "ejido, manzano bajo",
+			},
+		},
+		{
+			name:      "bad request",
+			updateUrl: "/address/x",
+			status:    http.StatusBadRequest,
+			response: map[string]interface{}{
+				"status":  400.0,
+				"error":   "Bad Request",
+				"message": "Invalid address ID",
+			},
+		},
+		{
+			name:      "not allowed",
+			updateUrl: "/address/",
+			status:    http.StatusMethodNotAllowed,
+			response: map[string]interface{}{
+				"status":  405.0,
+				"error":   "Method Not Allowed",
+				"message": "Method PUT not supported",
+			},
+		},
 	}
 
-	if m["address"] == originalAddress["address"] {
-		t.Errorf("Expected the address to change from '%v' to '%v'. Got '%v'", originalAddress["address"], m["address"], m["address"])
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			database.ClearTable()
+			addAddress(1)
+
+			req, _ := http.NewRequest("GET", "/address/1", nil)
+			response := executeRequest(req)
+			checkResponseCode(t, http.StatusOK, response.Code)
+
+			var originalAddress map[string]interface{}
+			json.Unmarshal(response.Body.Bytes(), &originalAddress)
+
+			req, _ = http.NewRequest("PUT", tc.updateUrl, bytes.NewBuffer(tc.payload))
+			response = executeRequest(req)
+
+			checkResponseCode(t, tc.status, response.Code)
+
+			var m map[string]interface{}
+			json.Unmarshal(response.Body.Bytes(), &m)
+
+			if tc.status != http.StatusOK {
+				checkErrorResponse(t, tc.response, m)
+			}
+
+			if m["id"] != tc.response["id"] {
+				t.Errorf("Expected the id to remain the same (%v). Got %v", tc.response["id"], m["id"])
+			}
+
+			if m["address"] == originalAddress["address"] {
+				t.Errorf("Expected the address to change from '%v' to '%v'. Got '%v'", originalAddress["address"], tc.response["address"], m["address"])
+			}
+		})
 	}
 }
 
 func TestDeleteAddress(t *testing.T) {
-	database.ClearTable()
-	addAddress(1)
+	tt := []struct {
+		name      string
+		deleteUrl string
+		status    int
+		response  map[string]interface{}
+	}{
+		{
+			name:      "update address",
+			deleteUrl: "/address/1",
+			status:    http.StatusNoContent,
+			response: map[string]interface{}{
+				"id":      1.0,
+				"address": "ejido, manzano bajo",
+			},
+		},
+		{
+			name:      "bad request",
+			deleteUrl: "/address/x",
+			status:    http.StatusBadRequest,
+			response: map[string]interface{}{
+				"status":  400.0,
+				"error":   "Bad Request",
+				"message": "Invalid address ID",
+			},
+		},
+		{
+			name:      "not allowed",
+			deleteUrl: "/address/",
+			status:    http.StatusMethodNotAllowed,
+			response: map[string]interface{}{
+				"status":  405.0,
+				"error":   "Method Not Allowed",
+				"message": "Method DELETE not supported",
+			},
+		},
+	}
 
-	req, _ := http.NewRequest("GET", "/address/1", nil)
-	response := executeRequest(req)
-	checkResponseCode(t, http.StatusOK, response.Code)
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			database.ClearTable()
+			addAddress(1)
 
-	req, _ = http.NewRequest("DELETE", "/address/1", nil)
-	response = executeRequest(req)
+			req, _ := http.NewRequest("GET", "/address/1", nil)
+			response := executeRequest(req)
+			checkResponseCode(t, http.StatusOK, response.Code)
 
-	checkResponseCode(t, http.StatusNoContent, response.Code)
+			var originalAddress map[string]interface{}
+			json.Unmarshal(response.Body.Bytes(), &originalAddress)
 
-	req, _ = http.NewRequest("GET", "/address/1", nil)
-	response = executeRequest(req)
-	checkResponseCode(t, http.StatusNotFound, response.Code)
+			req, _ = http.NewRequest("DELETE", tc.deleteUrl, nil)
+			response = executeRequest(req)
+
+			checkResponseCode(t, tc.status, response.Code)
+
+			var m map[string]interface{}
+			json.Unmarshal(response.Body.Bytes(), &m)
+
+			if tc.status != http.StatusOK {
+				checkErrorResponse(t, tc.response, m)
+				return
+			}
+
+			req, _ = http.NewRequest("GET", "/address/1", nil)
+			response = executeRequest(req)
+			checkResponseCode(t, http.StatusNotFound, response.Code)
+		})
+	}
 }
 
 func TestPathMethodNotAllowed(t *testing.T) {
@@ -165,13 +360,14 @@ func TestPathMethodNotAllowed(t *testing.T) {
 	response := executeRequest(req)
 	checkResponseCode(t, http.StatusMethodNotAllowed, response.Code)
 
-	var m map[string]string
-	json.Unmarshal(response.Body.Bytes(), &m)
-	if m["error"] != "Method Not Allowed" {
-		t.Errorf("Expected the 'error' key of the response to be set to 'Method Not Allowed'. Got '%s'", m["error"])
+	var expected = map[string]interface{}{
+		"status":  405.0,
+		"error":   "Method Not Allowed",
+		"message": "Method PATH not supported",
 	}
 
-	if m["message"] != "Method PATH not supported" {
-		t.Errorf("Expected the 'error' key of the response to be set to 'Method PATH not supported'. Got '%s'", m["message"])
-	}
+	var m map[string]interface{}
+	json.Unmarshal(response.Body.Bytes(), &m)
+
+	checkErrorResponse(t, expected, m)
 }

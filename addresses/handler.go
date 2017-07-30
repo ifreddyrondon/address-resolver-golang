@@ -76,7 +76,12 @@ func GetAddress(w http.ResponseWriter, r *http.Request) {
 func CreateAddress(w http.ResponseWriter, r *http.Request) {
 	var address Address
 	if err := gognar.ReadJSON(r.Body, &address); err != nil {
-		gognar.BadRequest(w, errors.New("Invalid resquest payload"))
+		gognar.BadRequest(w, errors.New("Invalid request payload"))
+		return
+	}
+
+	if address.Address == "" {
+		gognar.BadRequest(w, errors.New("Invalid request payload"))
 		return
 	}
 
