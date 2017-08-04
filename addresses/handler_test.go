@@ -172,8 +172,18 @@ func TestCreateAddress(t *testing.T) {
 			},
 		},
 		{
-			name:    "bad request",
+			name:    "bad request, missing address field",
 			payload: []byte(`{"a": "ejido, manzano bajo"}`),
+			status:  http.StatusBadRequest,
+			response: map[string]interface{}{
+				"status":  400.0,
+				"error":   "Bad Request",
+				"message": "Invalid request payload",
+			},
+		},
+		{
+			name:    "bad request, missing body",
+			payload: nil,
 			status:  http.StatusBadRequest,
 			response: map[string]interface{}{
 				"status":  400.0,
