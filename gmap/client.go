@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"sync"
 )
 
 const (
@@ -16,15 +15,9 @@ type AddressClient interface {
 	GetGeocoding(address string) (*http.Response, error)
 }
 
-var (
-	onceClient     sync.Once
-	clientInstance *client
-)
+var clientInstance AddressClient = new(client)
 
-func GetClient() *client {
-	onceClient.Do(func() {
-		clientInstance = &client{}
-	})
+func GetClient() AddressClient {
 	return clientInstance
 }
 
