@@ -2,19 +2,28 @@ package gmap
 
 import (
 	"encoding/json"
-	"fmt"
-	"net/http"
-	"net/url"
+	"errors"
+	"sync"
 )
 
-const (
-	baseGoogleMapURI = "https://maps.googleapis.com"
-	geocodingURI     = "/maps/api/geocode/json"
+var (
+	serviceOnce     sync.Once
+	serviceInstance *AddressService
 )
 
-func GetLatLngFromAddress(address string) (*Coordinate, error) {
-	uri := fmt.Sprintf("%s%s?address=%s", baseGoogleMapURI, geocodingURI, url.QueryEscape(address))
-	resp, err := http.Get(uri)
+func GetService() *AddressService {
+	serviceOnce.Do(func() {
+		serviceInstance = &AddressService{client: *GetClient()}
+	})
+	return serviceInstance
+}
+
+type AddressService struct {
+	client AddressClient
+}
+
+func (a *AddressService) GetLatLngFromAddress(address string) (*Coordinate, error) {
+	resp, err := a.client.GetGeocoding(address)
 	if err != nil {
 		return nil, err
 	}
@@ -23,6 +32,10 @@ func GetLatLngFromAddress(address string) (*Coordinate, error) {
 	result := new(geocodingResult)
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, err
+	}
+
+	if len(result.Results) < 1 {
+		return nil, errors.New("Not found")
 	}
 
 	return &result.Results[0].Geometry.Coordinate, nil

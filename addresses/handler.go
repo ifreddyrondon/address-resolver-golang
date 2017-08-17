@@ -14,6 +14,8 @@ import (
 	"github.com/ifreddyrondon/address-resolver/gognar"
 )
 
+var gmapService = gmap.GetService()
+
 func Router(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
@@ -85,7 +87,7 @@ func CreateAddress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	coordinate, err := gmap.GetLatLngFromAddress(address.Address)
+	coordinate, err := gmapService.GetLatLngFromAddress(address.Address)
 	if err != nil {
 		gognar.InternalServerError(w, err)
 		return
