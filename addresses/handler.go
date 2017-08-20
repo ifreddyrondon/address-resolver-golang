@@ -9,9 +9,9 @@ import (
 
 	"errors"
 
-	"github.com/ifreddyrondon/address-resolver/database"
-	"github.com/ifreddyrondon/address-resolver/gmap"
-	"github.com/ifreddyrondon/address-resolver/gognar"
+	"github.com/ifreddyrondon/address-resolver-golang/database"
+	"github.com/ifreddyrondon/address-resolver-golang/gmap"
+	"github.com/ifreddyrondon/address-resolver-golang/gognar"
 )
 
 var gmapService = gmap.GetService()

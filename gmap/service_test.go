@@ -3,7 +3,7 @@ package gmap_test
 import (
 	"testing"
 
-	"github.com/ifreddyrondon/address-resolver/gmap"
+	"github.com/ifreddyrondon/address-resolver-golang/gmap"
 )
 
 func TestGetLatLngFromSimpleAddress(t *testing.T) {

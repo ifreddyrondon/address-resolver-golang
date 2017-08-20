@@ -1,9 +1,9 @@
 package app
 
 import (
-	"github.com/ifreddyrondon/address-resolver/addresses"
-	"github.com/ifreddyrondon/address-resolver/database"
-	"github.com/ifreddyrondon/address-resolver/gognar"
+	"github.com/ifreddyrondon/address-resolver-golang/addresses"
+	"github.com/ifreddyrondon/address-resolver-golang/database"
+	"github.com/ifreddyrondon/address-resolver-golang/gognar"
 )
 
 var app gognar.GogApp

@@ -2,7 +2,7 @@
 package main
 
 import (
-	"github.com/ifreddyrondon/address-resolver/app"
+	"github.com/ifreddyrondon/address-resolver-golang/app"
 	"os"
 )
 
