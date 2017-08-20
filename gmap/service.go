@@ -3,18 +3,11 @@ package gmap
 import (
 	"encoding/json"
 	"errors"
-	"sync"
 )
 
-var (
-	serviceOnce     sync.Once
-	serviceInstance *AddressService
-)
+var serviceInstance = &AddressService{client: GetClient()}
 
 func GetService() *AddressService {
-	serviceOnce.Do(func() {
-		serviceInstance = &AddressService{client: *GetClient()}
-	})
 	return serviceInstance
 }
 
