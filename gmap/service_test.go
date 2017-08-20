@@ -38,11 +38,15 @@ func TestGetLatLngAddress(t *testing.T) {
 	}
 
 	if coordinate.Lat != -33.410267 {
-		t.Error("Lat should not be zero")
+		t.Error(fmt.Sprintf("Lat should not be zero. Got '%v", coordinate.Lat))
 	}
 
 	if coordinate.Lng != -70.5723 {
-		t.Error("Lng should not be zero")
+		t.Error(fmt.Sprintf("Lng should not be zero. Got '%v", coordinate.Lng))
+	}
+
+	if client.GetGeocodingCallCount() != 1 {
+		t.Error(fmt.Sprintf("Client should be called 1. Got '%v", client.GetGeocodingCallCount()))
 	}
 }
 
@@ -60,6 +64,10 @@ func TestGetErrorFromAddressWhenNotResult(t *testing.T) {
 	if err.Error() != "Not found" {
 		t.Error(fmt.Sprintf("Error message should be 'Not found'. Got '%v", err.Error()))
 	}
+
+	if client.GetGeocodingCallCount() != 1 {
+		t.Error(fmt.Sprintf("Client should be called 1. Got '%v", client.GetGeocodingCallCount()))
+	}
 }
 
 func TestGetErrorFromAddressWhenClientFails(t *testing.T) {
@@ -75,5 +83,9 @@ func TestGetErrorFromAddressWhenClientFails(t *testing.T) {
 
 	if err.Error() != "failed!" {
 		t.Error(fmt.Sprintf("Error message should be 'failed!'. Got '%v", err.Error()))
+	}
+
+	if client.GetGeocodingCallCount() != 1 {
+		t.Error(fmt.Sprintf("Client should be called 1. Got '%v", client.GetGeocodingCallCount()))
 	}
 }
