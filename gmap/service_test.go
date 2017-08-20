@@ -1,6 +1,8 @@
 package gmap_test
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 
 	"net/http"
@@ -24,8 +26,9 @@ func getClientResponse(fixtureFile string) *http.Response {
 	return response.Result()
 }
 
-func TestGetLatLngFromSimpleAddress(t *testing.T) {
+func TestGetLatLngAddress(t *testing.T) {
 	client := new(gmapfakes.FakeAddressClient)
+	gmap.SetClientInstance(client)
 	client.GetGeocodingReturns(getClientResponse("apoquindo_fixture.json"), nil)
 
 	gmapService := gmap.GetService()
@@ -34,11 +37,43 @@ func TestGetLatLngFromSimpleAddress(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if coordinate.Lat == 0 {
+	if coordinate.Lat != -33.410267 {
 		t.Error("Lat should not be zero")
 	}
 
-	if coordinate.Lng == 0 {
+	if coordinate.Lng != -70.5723 {
 		t.Error("Lng should not be zero")
+	}
+}
+
+func TestGetErrorFromAddressWhenNotResult(t *testing.T) {
+	client := new(gmapfakes.FakeAddressClient)
+	gmap.SetClientInstance(client)
+	client.GetGeocodingReturns(getClientResponse("zero_results_fixture.json"), nil)
+
+	gmapService := gmap.GetService()
+	coordinate, err := gmapService.GetLatLngFromAddress("Apoquindo")
+	if coordinate != nil {
+		t.Error(fmt.Sprintf("coordinate should be nil. Got '%v", coordinate))
+	}
+
+	if err.Error() != "Not found" {
+		t.Error(fmt.Sprintf("Error message should be 'Not found'. Got '%v", err.Error()))
+	}
+}
+
+func TestGetErrorFromAddressWhenClientFails(t *testing.T) {
+	client := new(gmapfakes.FakeAddressClient)
+	gmap.SetClientInstance(client)
+	client.GetGeocodingReturns(nil, errors.New("failed!"))
+
+	gmapService := gmap.GetService()
+	coordinate, err := gmapService.GetLatLngFromAddress("Apoquindo")
+	if coordinate != nil {
+		t.Error(fmt.Sprintf("coordinate should be nil. Got '%v", coordinate))
+	}
+
+	if err.Error() != "failed!" {
+		t.Error(fmt.Sprintf("Error message should be 'failed!'. Got '%v", err.Error()))
 	}
 }
