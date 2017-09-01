@@ -12,6 +12,7 @@ import (
 	"github.com/ifreddyrondon/address-resolver-golang/database"
 	"github.com/ifreddyrondon/address-resolver-golang/gmap"
 	"github.com/ifreddyrondon/address-resolver-golang/gognar"
+	"github.com/ifreddyrondon/address-resolver-golang/gognar/middlewares"
 )
 
 var gmapService = gmap.GetService()
@@ -19,7 +20,10 @@ var gmapService = gmap.GetService()
 func Router(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		Get(w, r)
+		dh := gognar.DispatchHandler{}
+		dh.Attach(middlewares.LogRequest)
+		dh.Finalize(Get)
+		dh.ServeHTTP(w, r)
 	case "POST":
 		CreateAddress(w, r)
 	case "PUT":
